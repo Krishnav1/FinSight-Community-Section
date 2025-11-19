@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   name: string;
@@ -10,6 +11,28 @@ export interface User {
   followers: number;
   following: number;
   reputation: 'Novice' | 'Analyst' | 'Guru' | 'Market Wizard';
+  location?: string;
+  website?: string;
+}
+
+export interface PollOption {
+  id: string;
+  text: string;
+  votes: number;
+}
+
+export interface Poll {
+  question: string;
+  options: PollOption[];
+  totalVotes: number;
+  userVotedOptionId?: string | null;
+}
+
+export interface Comment {
+  id: string;
+  user: User;
+  content: string;
+  timestamp: Date;
 }
 
 export interface Post {
@@ -23,6 +46,8 @@ export interface Post {
   tags: string[];
   type: 'view' | 'idea' | 'strategy';
   sentiment?: 'bullish' | 'bearish' | 'neutral';
+  poll?: Poll;
+  recentComments?: Comment[];
 }
 
 export interface ChatMessage {

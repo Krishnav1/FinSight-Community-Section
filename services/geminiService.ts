@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 
 // Initialize the client
@@ -66,5 +67,90 @@ export const summarizeChat = async (messages: string[]): Promise<string> => {
     return response.text || "No summary available.";
   } catch (error) {
     return "Unable to generate summary.";
+  }
+};
+
+/**
+ * Fetches real-time stock data using Google Search Grounding.
+ */
+export const fetchStockDetails = async (symbol: string): Promise<{ price: number; changePercent: number; currency: string } | null> => {
+  try {
+    // Remove $ for search query
+    const cleanSymbol = symbol.replace('$', '');
+    const modelId = 'gemini-2.5-flash';
+    
+    // Note: responseSchema and responseMimeType are NOT supported with googleSearch tool.
+    // We must rely on prompt engineering to get JSON.
+    const prompt = `Find the current real-time stock price and percentage change for ${cleanSymbol} (NSE/BSE preferred if Indian, otherwise US). 
+    Output ONLY a raw JSON object with these exact keys: "price" (number), "changePercent" (number), "currency" (string).
+    Example output: { "price": 1450.20, "changePercent": 1.5, "currency": "INR" }
+    Do not include markdown formatting or explanations.`;
+
+    const response = await ai.models.generateContent({
+      model: modelId,
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+      },
+    });
+
+    const text = response.text || "";
+    // Extract JSON from potential markdown blocks
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    
+    if (jsonMatch) {
+        const data = JSON.parse(jsonMatch[0]);
+        // Basic validation
+        if (typeof data.price === 'number') {
+            return data;
+        }
+    }
+    return null;
+  } catch (error) {
+    console.error("Stock fetch failed", error);
+    return null;
+  }
+};
+
+export interface NewsItem {
+  title: string;
+  source: string;
+  timeAgo: string;
+  url: string;
+}
+
+/**
+ * Fetches recent news for a stock using Google Search.
+ */
+export const fetchStockNews = async (symbol: string): Promise<NewsItem[]> => {
+  try {
+    const cleanSymbol = symbol.replace('$', '');
+    const modelId = 'gemini-2.5-flash';
+    
+    const prompt = `Find the top 2 latest financial news headlines for ${cleanSymbol}.
+    Return a strict JSON array (no markdown) where each object has:
+    "title" (string),
+    "source" (string, e.g. Bloomberg),
+    "timeAgo" (string, e.g. "1h ago"),
+    "url" (string).`;
+
+    const response = await ai.models.generateContent({
+      model: modelId,
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+      },
+    });
+
+    const text = response.text || "";
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    
+    if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+    }
+    return [];
+  } catch (error) {
+    console.error("News fetch failed", error);
+    return [];
   }
 };
